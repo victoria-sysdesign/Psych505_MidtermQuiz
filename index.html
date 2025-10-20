@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Psych 505 - Adaptive Study System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .quiz-option {
+            transition: background-color 0.2s, border-color 0.2s;
+        }
+        .correct {
+            background-color: #d1fae5; /* Green-100 */
+            border-color: #10b981; /* Green-500 */
+        }
+        .incorrect {
+            background-color: #fee2e2; /* Red-100 */
+            border-color: #ef4444; /* Red-500 */
+        }
+    </style>
+     <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+<body class="bg-slate-100 text-slate-800 flex items-center justify-center min-h-screen p-4">
+
+    <div id="app" class="w-full max-w-4xl mx-auto">
+
+        <!-- Start Screen -->
+        <div id="start-screen" class="bg-white p-8 rounded-xl shadow-lg text-center">
+            <h1 class="text-3xl font-bold text-slate-900 mb-2">Psych 505: Adaptive Study System</h1>
+            <p class="text-slate-600 mb-8">This tool will generate a random 20-question quiz from a large, rebalanced question bank. After you finish, you can take a follow-up quiz on the topics you missed.</p>
+            <button onclick="startMainQuiz()" class="bg-blue-600 text-white font-bold py-3 px-8 rounded-lg hover:bg-blue-700 transition-colors text-lg">
+                Start Main Quiz
+            </button>
+        </div>
+
+        <!-- Quiz Screen -->
+        <div id="quiz-screen" class="hidden bg-white p-8 rounded-xl shadow-lg">
+            <div id="quiz-header" class="mb-6">
+                 <h2 id="quiz-title" class="text-2xl font-bold text-slate-900"></h2>
+                 <p id="question-counter" class="text-sm text-slate-500"></p>
+            </div>
+            <div class="w-full bg-gray-200 rounded-full h-2.5 mb-6">
+                <div id="progress-bar" class="bg-blue-600 h-2.5 rounded-full" style="width: 0%"></div>
+            </div>
+            <div id="question-container">
+                <p id="question-text" class="text-xl font-medium mb-6"></p>
+                <div id="options-container" class="space-y-3">
+                </div>
+            </div>
+        </div>
+
+        <!-- Study Guide Screen -->
+        <div id="study-guide-screen" class="hidden bg-white p-8 rounded-xl shadow-lg">
+            <h2 id="results-title" class="text-3xl font-bold text-slate-900 mb-2">Quiz Complete!</h2>
+            <p id="score-text" class="text-lg text-slate-600 mb-8"></p>
+
+            <div id="tailored-guide-content">
+            </div>
+
+            <div class="mt-8 flex flex-col md:flex-row gap-4">
+                <button onclick="goToStartScreen()" class="w-full md:w-auto bg-slate-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-slate-700 transition-colors">
+                    Back to Main Menu
+                </button>
+                <button id="follow-up-quiz-btn" onclick="startFollowUpQuiz()" class="w-full md:w-auto bg-green-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-green-700 transition-colors">
+                    Quiz Me on What I Missed
+                </button>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        const fullQuestionBank = [
+            { question: "A study aiming to solve a specific, client-driven problem, such as improving employee retention, is best described as:", keyConcept: "Applied vs. Basic Research", answerOptions: [ { text: "Basic Research", rationale: "Basic research is driven by curiosity, not a specific client problem.", isCorrect: false }, { text: "Applied Research", rationale: "This fits the definition of being for a specific, business- or client-driven purpose.", isCorrect: true }, { text: "Relational Inquiry", rationale: "This is a method, but 'applied research' describes the study's overall purpose.", isCorrect: false }, { text: "Theoretical Research", rationale: "The study guide defines applied research as explicitly non-theoretical.", isCorrect: false } ] },
+            { question: "Which type of empirical inquiry would be used to determine if there is a statistical relationship between two variables, without manipulating anything?", keyConcept: "Types of Empirical Inquiry", answerOptions: [ { text: "Descriptive", rationale: "Descriptive inquiry focuses on observing, not linking variables.", isCorrect: false }, { text: "Experimental", rationale: "Experimental inquiry involves manipulation to establish cause and effect.", isCorrect: false }, { text: "Relational", rationale: "This is the correct term for identifying relationships without establishing causality.", isCorrect: true }, { text: "Qualitative", rationale: "'Relational' specifically describes the goal of linking variables statistically.", isCorrect: false } ] },
+            { question: "The 'permissible statistics controversy' centers on the debate over using certain statistical analyses on which type of data?", keyConcept: "Data Types & Measurement", answerOptions: [ { text: "Nominal", rationale: "The controversy is not primarily about nominal data, but about data that has an order.", isCorrect: false }, { text: "Ordinal", rationale: "This is the core of the issue, as researchers often treat ordinal data (like Likert scales) as interval data.", isCorrect: true }, { text: "Interval", rationale: "Using common parametric statistics on interval data is generally considered appropriate.", isCorrect: false }, { text: "Ratio", rationale: "Using common parametric statistics on ratio data is also considered appropriate.", "isCorrect": false } ] },
+            { question: "What is a key difference in 'Contextualism' between quantitative and qualitative research?", keyConcept: "Qualitative vs. Quantitative", answerOptions: [ { text: "Quantitative data is rich and detailed, while qualitative data is numeric.", rationale: "This describes the 'Nature of the Data', not 'Contextualism'.", "isCorrect": false }, { text: "Quantitative research is decontextualized and generalizable; qualitative is context-specific.", rationale: "This correctly summarizes the difference: quantitative seeks broad rules, while qualitative seeks deep understanding in a single context.", "isCorrect": true }, { text: "Quantitative research happens in labs, while qualitative research happens in situ.", rationale: "This describes the difference in 'Naturalism', not 'Contextualism'.", isCorrect: false }, { text: "The researcher is the instrument in quantitative research, but removed in qualitative.", rationale: "This describes the 'Role of the Researcher', and the roles are reversed.", isCorrect: false } ] },
+            { question: "A qualitative researcher who seeks relational explanations and looks for patterns and regularities is using which philosophical approach?", keyConcept: "Qualitative Approaches", answerOptions: [ { text: "Phenomenology", rationale: "Phenomenology is a non-neopositivistic approach focused on subjective, lived experience.", "isCorrect": false }, { text: "Hermeneutics", rationale: "Hermeneutics is a non-neopositivistic approach focused on the interpretation of texts.", "isCorrect": false }, { text: "Non-neopositivistic", rationale: "This is the opposite of the described approach; it does not seek universal understanding.", "isCorrect": false }, { text: "Neopositivistic", rationale: "This approach correctly describes the search for explanatory patterns within qualitative data.", isCorrect: true } ] },
+            { question: "A market researcher joins a private Facebook group for drone enthusiasts to observe their discussions and learn their lingo. This is an example of:", keyConcept: "Qualitative Methods", answerOptions: [ { text: "Netnography", rationale: "This is the correct term for using ethnographic methods to study online communities.", isCorrect: true }, { text: "Mystery Shopping", rationale: "Mystery shopping involves posing as a customer in a transactional setting.", isCorrect: false }, { text: "An In-Home Interview", rationale: "This takes place in a person's home and is a distinct qualitative method.", isCorrect: false }, { text: "A Focus Group", rationale: "A focus group is a moderated discussion, not an observation of an existing community.", isCorrect: false } ] },
+            { question: "According to the study guide, what is a primary reason focus groups are not frequently used in academic research?", keyConcept: "Qualitative Methods", answerOptions: [ { text: "They do not generate fresh ideas.", rationale: "Generating fresh ideas is listed as a primary advantage of focus groups.", isCorrect: false }, { text: "They are very expensive.", rationale: "The guide explicitly lists high cost as a major reason for their infrequent use in academia.", isCorrect: true }, { text: "The group dynamics are too simple to study.", rationale: "The guide notes that group dynamics can be very complex and must be managed carefully.", isCorrect: false }, { text: "They are not useful for special or niche samples.", rationale: "Allowing easy access to special groups is listed as an advantage.", isCorrect: false } ] },
+            { question: "In market research crosstabs, what is the convention for setting up the table?", keyConcept: "Data Analysis", answerOptions: [ { text: "The independent variable is in the rows, and you use row percentages.", rationale: "This is the opposite of the convention described in the study guide.", isCorrect: false }, { text: "The dependent variable is in the columns, and you use column percentages.", rationale: "The dependent variable (outcome) is typically placed in the rows.", isCorrect: false }, { text: "The independent variable is in the columns, and you use column percentages.", rationale: "This is the correct convention: the predictor (IV) goes in the columns, and you analyze percentages down the columns.", isCorrect: true }, { text: "The independent variable is in the columns, and you use row percentages.", rationale: "While the IV is in the columns, the convention is to use column percentages for analysis.", isCorrect: false } ] },
+            { question: "Which of the following is NOT one of the three conditions required to establish causation?", keyConcept: "Causal Research", answerOptions: [ { text: "The variables must be related statistically.", rationale: "A statistical relationship is the first necessary condition for causation.", isCorrect: false }, { text: "There must be temporal precedence (IV before DV).", rationale: "Temporal precedence is the second necessary condition.", isCorrect: false }, { text: "A true experimental design must be used.", rationale: "A true experiment is a *method* for achieving the conditions of causality, but it is not one of the three core conditions itself.", isCorrect: true }, { text: "There must be no confounding/extraneous variables.", rationale: "Ruling out alternative explanations is the third necessary condition.", isCorrect: false } ] },
+            { question: "A company surveys brand awareness in January using one sample, then conducts the same survey with a new sample in June. What is this design called?", keyConcept: "Research Designs", answerOptions: [ { text: "Longitudinal / Time Series", rationale: "A longitudinal design follows the exact same participants over time.", isCorrect: false }, { text: "Correlational: One Sample / Cross-Sectional", rationale: "This design involves only one point of data collection.", isCorrect: false }, { text: "Correlational: Tracking / Cross-Sectional", rationale: "This correctly describes a tracking study, where the same measures are collected over time but with different samples.", isCorrect: true }, { text: "One-Group Pretest-Posttest", rationale: "This design involves a single group measured before and after an intervention (X).", isCorrect: false } ] },
+            { question: "Data collected by a company like J.D. Power, which is then sold to multiple clients in the auto industry, is best described as:", keyConcept: "Data Sources", answerOptions: [ { text: "Internal Secondary Data", rationale: "Internal data would be from within one of the auto companies, not from an outside firm.", isCorrect: false }, { text: "Primary Data", rationale: "Primary data would be newly collected by one of the companies for their own project.", isCorrect: false }, { text: "Published Data", rationale: "Published data usually refers to free sources like government data, not data that is sold.", isCorrect: false }, { text: "Syndicated Data", rationale: "This is the correct term for data collected by a firm and sold in a standardized format to multiple subscribers.", isCorrect: true } ] },
+            { question: "A survey asks you to rate a brand on a scale of +3 to -3 based on how well the word 'Innovative' describes it. This is a:", keyConcept: "Measurement Scales", answerOptions: [ { text: "Likert Scale", rationale: "A Likert scale measures agreement (e.g., 'Strongly Agree').", isCorrect: false }, { text: "Stapel Scale", rationale: "This is the correct definition of a Stapel scale, using a single descriptor with a numeric valence scale.", isCorrect: true }, { text: "Semantic Differential", rationale: "A semantic differential would use two polar opposite words, like 'Innovative' vs. 'Traditional'.", isCorrect: false }, { text: "Constant Sum Scale", rationale: "A constant sum scale involves allocating a set number of points.", isCorrect: false } ] },
+            { question: "Which data collection mode has the primary advantages of speed and being error-free, but has high set-up costs?", keyConcept: "Data Collection Methods", answerOptions: [ { text: "Person-administered Surveys", rationale: "Person-administered surveys are slow and prone to human error.", isCorrect: false }, { text: "Computer-administered Surveys", rationale: "This correctly matches the profile: fast, no human data entry errors, but requires technical skills to set up.", isCorrect: true }, { text: "Self-administered Surveys", rationale: "Self-administered surveys (like mail surveys) are slow and prone to respondent errors.", isCorrect: false }, { text: "Mixed-mode Surveys", rationale: "The characteristics of a mixed-mode survey depend on which modes are being combined.", isCorrect: false } ] },
+            { question: "A scale that consistently produces the same result is _______, but it is only _______ if it is also measuring what it is supposed to measure.", keyConcept: "Reliability vs. Validity", answerOptions: [ { text: "valid; reliable", rationale: "This reverses the relationship; a measure must first be reliable before it can be valid.", isCorrect: false }, { text: "reliable; valid", rationale: "This correctly identifies reliability as consistency and validity as accuracy.", isCorrect: true }, { text: "objective; subjective", rationale: "These terms refer to the nature of a property, not the quality of the measurement.", isCorrect: false }, { text: "systematic; random", rationale: "These are types of error, not the core concepts of measurement quality.", isCorrect: false } ] },
+            { question: "A researcher develops a new scale for 'employee engagement' and finds that it correlates highly with 'job satisfaction'. This is evidence for:", keyConcept: "Types of Validity", answerOptions: [ { text: "Content Validity", rationale: "Content validity is about whether the items appear appropriate, not its statistical relationships.", isCorrect: false }, { text: "Test-Retest Reliability", rationale: "This is a measure of consistency over time, not a comparison to other scales.", isCorrect: false }, { text: "Construct Validity", rationale: "This is an example of establishing construct validity, by showing convergent validity with a related construct.", isCorrect: true }, { text: "External Validity", rationale: "External validity is about generalizability to other populations.", isCorrect: false } ] },
+            { question: "What is the acceptable threshold for Cronbach's alpha (α) to indicate good internal consistency?", keyConcept: "Types of Reliability", answerOptions: [ { text: "Greater than or equal to 0.7", rationale: "This is the standard cutoff mentioned in the study guide for acceptable internal consistency.", isCorrect: true }, { text: "Less than 0.5", rationale: "A score below 0.5 would be considered unacceptable.", isCorrect: false }, { text: "Exactly 1.0", rationale: "While technically perfect, a score of 1.0 is rare and may suggest redundant items.", isCorrect: false }, { text: "Dependent on the number of items.", rationale: "While the number of items can influence the score, 0.7 is the generally accepted minimum threshold.", isCorrect: false } ] },
+            { question: "Which type of validity assesses whether a measure accurately predicts a future outcome, like GRE scores predicting grad school GPA?", keyConcept: "Types of Validity", answerOptions: [ { text: "Content Validity", rationale: "Content validity is about whether the measure appears appropriate on the surface.", isCorrect: false }, { text: "Construct Validity", rationale: "Construct validity is about how the measure relates to other theoretical constructs.", isCorrect: false }, { text: "Predictive Validity", rationale: "This is the correct term for a measure's ability to predict a future criterion.", isCorrect: true }, { text: "External Validity", rationale: "External validity is about the generalizability of the findings to other populations.", isCorrect: false } ] },
+            { question: "A clock that is always exactly 10 minutes fast is a good analogy for a measure that is:", keyConcept: "Reliability vs. Validity", answerOptions: [ { text: "Valid but not reliable", rationale: "A measure cannot be valid if it is not reliable.", isCorrect: false }, { text: "Reliable but not valid", rationale: "This is the correct relationship. The clock is consistent (reliable) but inaccurate (not valid).", isCorrect: true }, { text: "Both reliable and valid", rationale: "The clock is not accurate, therefore it is not valid.", isCorrect: false }, { text: "Neither reliable nor valid", rationale: "The clock is consistent, so it is reliable.", isCorrect: false } ] },
+            { question: "What is the key feature that distinguishes a 'True Experiment' from a 'Quasi-Experiment'?", keyConcept: "Research Designs", answerOptions: [ { text: "The use of a pre-test and post-test.", rationale: "Both true and quasi-experiments can use this design.", isCorrect: false }, { text: "The presence of a control group.", rationale: "Some quasi-experimental designs also include control groups.", isCorrect: false }, { text: "Random assignment of participants to groups.", rationale: "This is the defining characteristic. True experiments use random assignment to create equivalent groups.", isCorrect: true }, { text: "It is conducted in a laboratory.", rationale: "A study's location (lab vs. field) does not define it as a true experiment.", isCorrect: false } ] },
+            { question: "The three types of empirical inquiry are:", keyConcept: "Types of Empirical Inquiry", answerOptions: [ { text: "Qualitative, Quantitative, and Mixed-Mode", rationale: "These are broad approaches, not the three specific types of inquiry listed.", isCorrect: false }, { text: "Descriptive, Relational, and Experimental", rationale: "This correctly lists the three types: describing, identifying relationships, and establishing causality.", isCorrect: true }, { text: "Primary, Secondary, and Syndicated", rationale: "These are types of data sources, not types of inquiry.", isCorrect: false }, { text: "Nominal, Ordinal, and Interval", rationale: "These are levels of measurement, not types of inquiry.", isCorrect: false } ] },
+            { question: "A researcher wants to gain background information and define terms in a category where they have no firm hypothesis. This is:", keyConcept: "Research Designs", answerOptions: [ { "text": "Exploratory research", "rationale": "This is the correct term for research used to clarify problems and generate hypotheses.", "isCorrect": true }, { "text": "Descriptive research", "rationale": "Descriptive research is used to describe relationships between variables, which implies a hypothesis already exists.", "isCorrect": false }, { "text": "Causal research", "rationale": "Causal research is used to establish cause-and-effect, which is a much later stage.", "isCorrect": false }, { "text": "Longitudinal study", "rationale": "This is a specific type of descriptive research, not the initial exploratory phase.", "isCorrect": false } ] },
+            { question: "Participants in a study dropping out of the experimental group at a much higher rate than the control group is a threat to validity called:", keyConcept: "Threats to Validity", answerOptions: [ { "text": "History", "rationale": "History refers to an external event affecting the study.", "isCorrect": false }, { "text": "Hawthorne effect", "rationale": "The Hawthorne effect is when participants change behavior because they know they are being observed.", "isCorrect": false }, { "text": "Instrument reactivity", "rationale": "This refers to the measurement tool itself changing the respondent.", "isCorrect": false }, { "text": "Differential subject loss", "rationale": "This is the correct term for when participants drop out of study groups at different rates, making the groups no longer equivalent.", "isCorrect": true } ] },
+            { question: "Which survey mode offers the most respondent control and has the least potential for socially desirable responding?", keyConcept: "Data Collection Methods", answerOptions: [ { "text": "Person-administered surveys", "rationale": "The presence of an interviewer reduces respondent control and can increase social pressure.", "isCorrect": false }, { "text": "Computer-administered surveys", "rationale": "While better than in-person, a self-administered paper survey offers even more control.", "isCorrect": false }, { "text": "Self-administered surveys", "rationale": "The guide lists 'respondent control' and 'no socially desirable responding' as key advantages of this mode, where no administrator is present.", "isCorrect": true }, { "text": "Mixed-mode surveys", "rationale": "This depends on the modes being mixed.", "isCorrect": false } ] },
+            { question: "A researcher checks their own consistency in coding open-ended responses over a period of a week. This is a check for:", keyConcept: "Types of Reliability", answerOptions: [ { "text": "Inter-Rater Reliability", "rationale": "Inter-rater reliability is about consistency between *different* raters.", "isCorrect": false }, { "text": "Intra-Rater Reliability", "rationale": "This is the correct term for how consistent a single rater is with themselves over time.", "isCorrect": true }, { "text": "Split-halves reliability", "rationale": "This applies to scales, not coding of qualitative data.", "isCorrect": false }, { "text": "Content validity", "rationale": "This is a measure of validity (accuracy), not reliability (consistency).", "isCorrect": false } ] },
+            { question: "A study measures employee satisfaction every year for five years, but uses a different group of randomly selected employees each year. This is a:", keyConcept: "Research Designs", answerOptions: [ { text: "Longitudinal study", rationale: "A longitudinal study follows the exact same group of individuals over time.", isCorrect: false }, { text: "Tracking study", rationale: "This correctly describes a tracking study, where the same measures are collected over time with different samples.", isCorrect: true }, { text: "Factorial design", rationale: "A factorial design involves manipulating two or more independent variables simultaneously.", isCorrect: false }, { text: "Case study", rationale: "A case study is an in-depth analysis of a single case or a few cases, not a repeated survey.", isCorrect: false } ] },
+            { question: "A key advantage of standardized data is:", keyConcept: "Data Sources", answerOptions: [ { text: "It provides a strategic information advantage.", rationale: "This is a disadvantage, as competitors can buy the same data.", isCorrect: false }, { text: "There is a high degree of control over the data collected.", rationale: "This is a disadvantage; you have little to no control over what is collected.", isCorrect: false }, { text: "The costs are shared, so it is cheaper.", rationale: "This is a primary advantage, as the cost of data collection is spread across multiple subscribers.", isCorrect: true }, { text: "It never requires long-term contracts.", rationale: "The guide lists long-term contracts as a potential disadvantage.", isCorrect: false } ] },
+            { question: "A survey question asks respondents to 'Distribute 100 points among Price, Quality, and Speed to show their importance.' This is a:", keyConcept: "Measurement Scales", answerOptions: [ { text: "Ranking Scale", rationale: "A ranking scale would ask to order the items (1st, 2nd, 3rd) but not assign point values.", isCorrect: false }, { text: "Likert Scale", rationale: "A Likert scale measures agreement or satisfaction, not relative importance through points.", isCorrect: false }, { text: "Constant Sum Scale", rationale: "This is the definition of a constant sum scale, where respondents allocate a fixed sum of points.", isCorrect: true }, { text: "Natural Scale", rationale: "While it uses numbers, it's a specific type of synthetic/metric scale, not a standard natural one like age.", isCorrect: false } ] },
+            { question: "An 'in-office' survey where an interviewer speaks to employees in person is a type of:", keyConcept: "Data Collection Methods", answerOptions: [ { text: "Computer-administered survey", rationale: "This involves a live person, not just a computer.", isCorrect: false }, { text: "Self-administered survey", rationale: "The presence of the interviewer means it is not self-administered.", isCorrect: false }, { text: "Person-administered survey", rationale: "This is the correct category for surveys conducted by a live interviewer.", isCorrect: true }, { text: "Mixed-mode survey", rationale: "A mixed-mode survey would involve combining this method with another, like an online survey.", isCorrect: false } ] },
+            { question: "The degree to which a scale appears, on the surface, to be measuring what it's supposed to measure is called:", keyConcept: "Types of Validity", answerOptions: [ { text: "Construct Validity", rationale: "Construct validity is a deeper measure of whether the scale relates to other theoretical constructs as expected.", isCorrect: false }, { text: "Criterion Validity", rationale: "Criterion validity relates the scale to a concrete outcome.", isCorrect: false }, { text: "Content (or Face) Validity", rationale: "This is the correct term for whether a measure appears valid 'on its face'.", isCorrect: true }, { text: "Statistical Validity", rationale: "Statistical validity is about whether a relationship exists between variables.", isCorrect: false } ] },
+            { question: "The consistency of a single rater with themselves over time is known as:", keyConcept: "Types of Reliability", answerOptions: [ { text: "Inter-rater reliability", rationale: "This refers to the consistency between two or more different raters.", isCorrect: false }, { text: "Intra-rater reliability", rationale: "This correctly defines the consistency of one person with their own ratings.", isCorrect: true }, { text: "Test-retest reliability", rationale: "This refers to the consistency of a scale's results over time, not a rater's consistency.", isCorrect: false }, { text: "Internal consistency", rationale: "This refers to how well the items on a scale 'hang together'.", isCorrect: false } ] },
+            { question: "An earthquake happens between the pre-test and post-test of an experiment measuring anxiety. This is a threat to internal validity known as:", keyConcept: "Threats to Validity", answerOptions: [ { "text": "History", "rationale": "History is the correct term for an external, environmental event that can impact the study's outcome.", "isCorrect": true }, { "text": "Hawthorne effect", "rationale": "The Hawthorne effect relates to participants' awareness of being observed.", "isCorrect": false }, { "text": "Instrument reactivity", "rationale": "This would involve the measurement tool itself causing a change, not an external event.", "isCorrect": false }, { "text": "Maturation", "rationale": "Maturation refers to internal changes in the participants themselves over time (e.g., growing older), not an external event.", "isCorrect": false } ] },
+            { question: "Which measurement scale has a true zero point, allowing for statements like 'twice as much'?", keyConcept: "Data Types & Measurement", answerOptions: [ { "text": "Nominal", "rationale": "Nominal scales are for categories and have no mathematical properties.", "isCorrect": false }, { "text": "Ordinal", "rationale": "Ordinal scales have an order but the distance between points is not equal.", "isCorrect": false }, { "text": "Interval", "rationale": "Interval scales have equal distances but lack a true zero (e.g., 0°C is not the absence of heat).", "isCorrect": false }, { "text": "Ratio", "rationale": "Ratio scales have a true zero, which allows for ratio comparisons (e.g., $100 is twice as much as $50).", "isCorrect": true } ] }
+        ];
+
+        let currentQuestionSet = [];
+        let currentQuestionIndex = 0;
+        let userAnswers = [];
+        let missedConcepts = [];
+
+        const startScreen = document.getElementById('start-screen');
+        const quizScreen = document.getElementById('quiz-screen');
+        const studyGuideScreen = document.getElementById('study-guide-screen');
+        const quizTitleEl = document.getElementById('quiz-title');
+        const questionCounterEl = document.getElementById('question-counter');
+        const progressBar = document.getElementById('progress-bar');
+        const questionTextEl = document.getElementById('question-text');
+        const optionsContainer = document.getElementById('options-container');
+        const scoreTextEl = document.getElementById('score-text');
+        const tailoredGuideContentEl = document.getElementById('tailored-guide-content');
+        const resultsTitleEl = document.getElementById('results-title');
+        const followUpBtn = document.getElementById('follow-up-quiz-btn');
+
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
+
+        function startMainQuiz() {
+            const shuffledBank = shuffleArray([...fullQuestionBank]);
+            currentQuestionSet = shuffledBank.slice(0, 20);
+            startQuiz('Main Quiz');
+        }
+
+        function startFollowUpQuiz() {
+            const followUpQuestions = fullQuestionBank.filter(q => missedConcepts.includes(q.keyConcept));
+            currentQuestionSet = shuffleArray([...followUpQuestions]);
+             if(currentQuestionSet.length === 0) return;
+            startQuiz('Follow-Up Quiz');
+        }
+        
+        function startQuiz(quizTitle) {
+            currentQuestionIndex = 0;
+            userAnswers = [];
+            
+            quizTitleEl.textContent = quizTitle;
+            startScreen.classList.add('hidden');
+            studyGuideScreen.classList.add('hidden');
+            quizScreen.classList.remove('hidden');
+            renderQuestion();
+        }
+        
+        function goToStartScreen() {
+            studyGuideScreen.classList.add('hidden');
+            quizScreen.classList.add('hidden');
+            startScreen.classList.remove('hidden');
+        }
+
+        function renderQuestion() {
+            if (currentQuestionIndex >= currentQuestionSet.length) {
+                showStudyGuide();
+                return;
+            }
+            const question = currentQuestionSet[currentQuestionIndex];
+            
+            questionCounterEl.textContent = `Question ${currentQuestionIndex + 1} of ${currentQuestionSet.length}`;
+            const progress = ((currentQuestionIndex) / currentQuestionSet.length) * 100;
+            progressBar.style.width = `${progress}%`;
+
+            questionTextEl.textContent = question.question;
+            optionsContainer.innerHTML = '';
+
+            const shuffledOptions = shuffleArray([...question.answerOptions]);
+
+            shuffledOptions.forEach((option) => {
+                const optionButton = document.createElement('button');
+                optionButton.className = 'quiz-option block w-full text-left p-4 border-2 border-slate-300 rounded-lg hover:bg-slate-100';
+                optionButton.textContent = option.text;
+                optionButton.onclick = () => selectAnswer(option, shuffledOptions);
+                optionsContainer.appendChild(optionButton);
+            });
+        }
+
+        function selectAnswer(selectedOption, allOptions) {
+            const question = currentQuestionSet[currentQuestionIndex];
+            const isCorrect = selectedOption.isCorrect;
+
+            userAnswers.push({
+                question: question.question,
+                userAnswer: selectedOption.text,
+                correctAnswer: question.answerOptions.find(opt => opt.isCorrect).text,
+                isCorrect: isCorrect,
+                rationale: allOptions.find(opt => opt.text === selectedOption.text).rationale,
+                keyConcept: question.keyConcept 
+            });
+
+            const optionButtons = optionsContainer.getElementsByTagName('button');
+            Array.from(optionButtons).forEach((btn) => {
+                btn.disabled = true;
+                const btnOption = allOptions.find(opt => opt.text === btn.textContent);
+                if (btnOption.isCorrect) {
+                    btn.classList.add('correct');
+                } else if (btn.textContent === selectedOption.text && !btnOption.isCorrect) {
+                     btn.classList.add('incorrect');
+                }
+            });
+
+            setTimeout(() => {
+                currentQuestionIndex++;
+                renderQuestion();
+            }, 2000);
+        }
+
+        function showStudyGuide() {
+            quizScreen.classList.add('hidden');
+            studyGuideScreen.classList.remove('hidden');
+
+            const correctAnswersCount = userAnswers.filter(a => a.isCorrect).length;
+            const totalQuestions = userAnswers.length;
+            const scorePercentage = Math.round((correctAnswersCount / totalQuestions) * 100);
+
+            resultsTitleEl.textContent = `${quizTitleEl.textContent} Complete!`;
+            scoreTextEl.innerHTML = `You scored <strong>${correctAnswersCount} out of ${totalQuestions} (${scorePercentage}%)</strong>. Here is a breakdown of what you missed.`;
+
+            const incorrectAnswers = userAnswers.filter(a => !a.isCorrect);
+            missedConcepts = [...new Set(incorrectAnswers.map(a => a.keyConcept))];
+            
+            if (missedConcepts.length > 0) {
+                followUpBtn.classList.remove('hidden');
+            } else {
+                followUpBtn.classList.add('hidden');
+            }
+
+            let guideHTML = '';
+
+            if (incorrectAnswers.length > 0) {
+                guideHTML += `<div class="mt-6 border-t pt-6">
+                    <h3 class="text-xl font-bold mb-4 text-slate-900">Concepts to Review:</h3>
+                    <div class="flex flex-wrap gap-2 mb-6">
+                        ${missedConcepts.map(concept => `<span class="bg-red-100 text-red-800 text-sm font-medium mr-2 px-2.5 py-0.5 rounded">${concept}</span>`).join('')}
+                    </div>
+                    <h3 class="text-xl font-bold mb-4 text-slate-900">Detailed Breakdown:</h3>
+                    <div class="space-y-6">
+                        ${incorrectAnswers.map(answer => `
+                            <div class="bg-slate-50 p-4 rounded-lg border border-slate-200">
+                                <p class="font-semibold text-slate-800">${answer.question}</p>
+                                <p class="mt-2 text-red-600"><strong class="font-semibold">Your Answer:</strong> ${answer.userAnswer}</p>
+                                <p class="mt-1 text-green-700"><strong class="font-semibold">Correct Answer:</strong> ${answer.correctAnswer}</p>
+                                <p class="mt-2 text-sm text-slate-600 bg-slate-100 p-2 rounded"><strong class="font-semibold">Rationale:</strong> ${answer.rationale}</p>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>`;
+            } else {
+                 guideHTML += `<div class="mt-6 border-t pt-6">
+                    <h3 class="text-xl font-bold mb-4 text-green-700">Excellent Work! 100% Correct!</h3>
+                    <p>You answered all questions correctly. You have a strong grasp of the material. Great job!</p>
+                 </div>`;
+            }
+
+            tailoredGuideContentEl.innerHTML = guideHTML;
+        }
+    </script>
+</body>
+</html>
+
